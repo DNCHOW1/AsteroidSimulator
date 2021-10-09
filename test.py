@@ -1,5 +1,8 @@
 #!/usr/bin/python
 
+from pygame.sprite import collide_circle
+
+
 try:
     import sys
     import random
@@ -39,6 +42,7 @@ class TestAsteroid(pygame.sprite.Sprite):
         self.x, self.y = random.randint(0, self.area.width), random.randint(0, self.area.height)
         self.velocity = (random.uniform(-200, 200)/size, random.uniform(-200, 200)/size)
         self.size = size
+        self.radius = 4*size/10
         self.rect.center = (self.x, self.y)
         
     def update(self, otherAst, grow=None):
@@ -54,15 +58,17 @@ class TestAsteroid(pygame.sprite.Sprite):
                 newy = (screenH + newy) % screenH
         self.rect.center = (newx, newy)
         self.x, self.y = newx, newy
+        '''
         if grow % 6 == 0: 
             self.size += 1
-            self.image = pygame.transform.scale(self.image, (self.size, self.size))
+            self.image = pygame.transform.scale(self.image, (self.size, self.size))'''
         self.handleCollisions(otherAst, debug=True)
 
     def handleCollisions(self, otherAst, debug=False):
-        collisions = pygame.sprite.spritecollide(self, otherAst, False) # If collide with others, length will be >= 2
+
+        collisions = pygame.sprite.spritecollide(self, otherAst, False, collided=collide_circle) # If collide with others, length will be >= 2
         if len(collisions) >= 2:
-            if debug: pygame.draw.circle(pygame.display.get_surface(), "RED", (self.x, self.y), 4*self.size/10, width=2)
+            if debug: pygame.draw.circle(pygame.display.get_surface(), "RED", (self.x, self.y), self.radius, width=2)
 
 def main():
     # Initialise screen
