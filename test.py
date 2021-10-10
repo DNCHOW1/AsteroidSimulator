@@ -1,8 +1,5 @@
 #!/usr/bin/python
 
-from pygame.sprite import collide_circle
-
-
 try:
     import sys
     import random
@@ -11,8 +8,11 @@ try:
     import getopt
     import pygame
     import random
+    import numpy as np
+    import traceback
     from socket import *
     from pygame.locals import *
+    from pygame.sprite import collide_circle
 except ImportError as err:
     print(f"Couldn't load module. {err}")
     sys.exit(2)
@@ -39,15 +39,17 @@ class TestAsteroid(pygame.sprite.Sprite):
         self.area = screen.get_rect() # This would be the bounding area for the sprite
         size = random.randrange(20, 100, 15)
         self.image, self.rect = load_png("test", size)
-        self.x, self.y = random.randint(0, self.area.width), random.randint(0, self.area.height)
-        self.velocity = (random.uniform(-200, 200)/size, random.uniform(-200, 200)/size)
+        #self.x, self.y = random.randint(0, self.area.width), random.randint(0, self.area.height)
+        self.position = np.array((random.randint(0, self.area.width), random.randint(0, self.area.height)))
         self.size = size
         self.radius = 4*size/10
-        self.rect.center = (self.x, self.y)
+        self.velocity = np.array((random.uniform(-200, 200)/size, random.uniform(-200, 200)/size))
+        self.rect.center = self.position
+        #self.velocity = (random.uniform(-200, 200)/size, random.uniform(-200, 200)/size)
+        #self.rect.center = (self.x, self.y)
         
-    def update(self, otherAst, grow=None):
-        vx, vy = self.velocity
-        newx, newy = self.x + vx, self.y + vy
+    def update(self, otherAst):
+        newx, newy = np.add(self.position, self.velocity)
         self.rect.center = (newx, newy)
 
         if not self.area.contains(self.rect): # Contains needs to be a rect style object
@@ -56,19 +58,32 @@ class TestAsteroid(pygame.sprite.Sprite):
                 newx = (screenW + newx) % screenW
             if newy < 0 or newy > screenH:
                 newy = (screenH + newy) % screenH
-        self.rect.center = (newx, newy)
-        self.x, self.y = newx, newy
-        '''
-        if grow % 6 == 0: 
-            self.size += 1
-            self.image = pygame.transform.scale(self.image, (self.size, self.size))'''
+        self.rect.center = self.position = np.array((newx, newy))
         self.handleCollisions(otherAst, debug=True)
 
     def handleCollisions(self, otherAst, debug=False):
 
         collisions = pygame.sprite.spritecollide(self, otherAst, False, collided=collide_circle) # If collide with others, length will be >= 2
         if len(collisions) >= 2:
-            if debug: pygame.draw.circle(pygame.display.get_surface(), "RED", (self.x, self.y), self.radius, width=2)
+            if debug: pygame.draw.circle(pygame.display.get_surface(), "RED", self.position, self.radius, width=2)
+            for sprite in collisions:
+                if self != sprite:
+                    self.velocity, sprite.velocity = self.calcElastic(self, sprite)
+
+    def calcElastic(self, ast1, ast2):
+        # Where size also refers to the mass of the object
+        m1, v1, r1 = ast1.size, ast1.velocity, ast1.position
+        m2, v2, r2 = ast2.size, ast2.velocity, ast2.position
+        posDiff = r1 - r2
+        velDiff = v1 - v2
+        product1 = 2*m2 / (m1 + m2)
+        product2 = np.dot(velDiff, posDiff) / np.linalg.norm(posDiff)**2
+        newV1 = v1 - product1*product2*posDiff
+
+        product1 = 2*m1 / (m1 + m2)
+        product2 = np.dot(-velDiff, -posDiff) / np.linalg.norm(posDiff)**2
+        newV2 = v2 - product1*product2*-posDiff
+        return newV1, newV2
 
 def main():
     # Initialise screen
@@ -85,7 +100,7 @@ def main():
     # Loading images has to be done after pygame is initialized and display is set
     #Stella = TestAsteroid(random.randint(0, WIDTH), random.randint(0, HEIGHT), random.random())
     asteroid_group = pygame.sprite.Group()
-    for i in range(20):
+    for i in range(35):
         ast = TestAsteroid()
         asteroid_group.add(ast)
 
@@ -106,7 +121,7 @@ def main():
                 running = False
 
         screen.blit(background, (0, 0)) # Erase the board(previous content)
-        asteroid_group.update(asteroid_group, count) # Update the location for all sprites
+        asteroid_group.update(asteroid_group) # Update the location for all sprites
         asteroid_group.draw(screen)
         pygame.display.flip() # Could use this or display.update()
                               # Update has added benefit of updating specific surfaces
