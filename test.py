@@ -18,7 +18,7 @@ except ImportError as err:
     sys.exit(2)
 
 def load_png(name, size):
-    location = os.path.join(os.getcwd(), f"{name}.png")
+    location = os.path.join(os.getcwd(), f"{name+str(1)}.png")
     try:
         image = pygame.image.load(location)
         if image.get_alpha:
@@ -34,16 +34,19 @@ def load_png(name, size):
 
 class TestAsteroid(pygame.sprite.Sprite):
     def __init__(self):
+        boundSpeed = 50
         pygame.sprite.Sprite.__init__(self)
         screen = pygame.display.get_surface()
         self.area = screen.get_rect() # This would be the bounding area for the sprite
         size = random.randrange(20, 100, 15)
+        #size = 150 if random.randint(0, 1) else 20
         self.image, self.rect = load_png("test", size)
         #self.x, self.y = random.randint(0, self.area.width), random.randint(0, self.area.height)
         self.position = np.array((random.randint(0, self.area.width), random.randint(0, self.area.height)))
         self.size = size
         self.radius = 4*size/10
-        self.velocity = np.array((random.uniform(-200, 200)/size, random.uniform(-200, 200)/size))
+        self.velocity = np.array((random.uniform(-boundSpeed, boundSpeed)/size, 
+                                  random.uniform(-boundSpeed, boundSpeed)/size))
         self.rect.center = self.position
         #self.velocity = (random.uniform(-200, 200)/size, random.uniform(-200, 200)/size)
         #self.rect.center = (self.x, self.y)
@@ -100,7 +103,7 @@ def main():
     # Loading images has to be done after pygame is initialized and display is set
     #Stella = TestAsteroid(random.randint(0, WIDTH), random.randint(0, HEIGHT), random.random())
     asteroid_group = pygame.sprite.Group()
-    for i in range(35):
+    for i in range(25):
         ast = TestAsteroid()
         asteroid_group.add(ast)
 
@@ -123,6 +126,7 @@ def main():
         screen.blit(background, (0, 0)) # Erase the board(previous content)
         asteroid_group.update(asteroid_group) # Update the location for all sprites
         asteroid_group.draw(screen)
+
         pygame.display.flip() # Could use this or display.update()
                               # Update has added benefit of updating specific surfaces
         count += 1
